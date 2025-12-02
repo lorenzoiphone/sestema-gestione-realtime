@@ -1,0 +1,3555 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trenitalia AV - Sistema Completo Gestione Turni Interattivo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.0/build/global/luxon.min.js"></script>
+    <style>
+        /* ==================== RESET E VARIABILI ==================== */
+        :root {
+            --trenitalia-blue: #0066CC;
+            --trenitalia-red: #E30613;
+            --trenitalia-dark: #003366;
+            --trenitalia-light: #E6F2FF;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --gray-light: #f8f9fa;
+            --gray-medium: #dee2e6;
+            --gray-dark: #343a40;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        /* ==================== LAYOUT PRINCIPALE ==================== */
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ==================== SIDEBAR ==================== */
+        .sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--trenitalia-light);
+        }
+
+        .logo-section h1 {
+            color: var(--trenitalia-dark);
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+
+        .logo-section p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .menu-section {
+            margin-bottom: 30px;
+        }
+
+        .menu-section h3 {
+            color: var(--trenitalia-dark);
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #555;
+            text-decoration: none;
+        }
+
+        .menu-item:hover {
+            background: var(--trenitalia-light);
+            color: var(--trenitalia-dark);
+            transform: translateX(5px);
+        }
+
+        .menu-item.active {
+            background: var(--trenitalia-blue);
+            color: white;
+        }
+
+        .menu-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray-medium);
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* ==================== CONTENUTO PRINCIPALE ==================== */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ==================== HEADER ==================== */
+        .main-header {
+            background: linear-gradient(90deg, var(--trenitalia-dark), var(--trenitalia-blue));
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-title h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .header-title p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.85;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ==================== CONTROLLI ==================== */
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            background: var(--trenitalia-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: var(--trenitalia-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-info {
+            background: var(--info);
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--trenitalia-blue);
+            color: var(--trenitalia-blue);
+        }
+
+        .btn-outline:hover {
+            background: var(--trenitalia-blue);
+            color: white;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select, input, textarea {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            min-width: 180px;
+            transition: border 0.3s;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--trenitalia-blue);
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+        }
+
+        /* ==================== CONTENUTO DINAMICO ==================== */
+        .content-area {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            min-height: 600px;
+            display: none;
+        }
+
+        .content-area.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--trenitalia-light);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--trenitalia-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-subtitle {
+            color: #666;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        /* ==================== TABELLE ==================== */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--gray-medium);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        th {
+            background-color: var(--trenitalia-light);
+            color: var(--trenitalia-dark);
+            font-weight: 600;
+            text-align: left;
+            padding: 15px 12px;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            border-bottom: 2px solid var(--gray-medium);
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--gray-medium);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        tr.editing {
+            background-color: #fff3cd !important;
+        }
+
+        /* ==================== BADGES ==================== */
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background-color: rgba(40, 167, 69, 0.15);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background-color: rgba(255, 193, 7, 0.15);
+            color: #856404;
+        }
+
+        .badge-danger {
+            background-color: rgba(220, 53, 69, 0.15);
+            color: var(--danger);
+        }
+
+        .badge-info {
+            background-color: rgba(23, 162, 184, 0.15);
+            color: var(--info);
+        }
+
+        .badge-primary {
+            background-color: rgba(0, 102, 204, 0.15);
+            color: var(--trenitalia-blue);
+        }
+
+        /* ==================== GRAFICI ==================== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid var(--gray-medium);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        /* ==================== GANTT CHART ==================== */
+        .gantt-container {
+            width: 100%;
+            height: 500px;
+            overflow-x: auto;
+            margin-top: 20px;
+            border: 1px solid var(--gray-medium);
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+            position: relative;
+        }
+
+        .gantt-timeline {
+            height: 40px;
+            position: relative;
+            border-bottom: 2px solid var(--gray-dark);
+            margin-bottom: 20px;
+        }
+
+        .gantt-hour {
+            position: absolute;
+            text-align: center;
+            font-size: 12px;
+            color: var(--gray-dark);
+            transform: translateX(-50%);
+        }
+
+        .gantt-hour::before {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 1px;
+            height: 5px;
+            background: var(--gray-medium);
+        }
+
+        .gantt-row {
+            height: 50px;
+            margin-bottom: 10px;
+            position: relative;
+            border-bottom: 1px solid var(--gray-medium);
+            display: flex;
+            align-items: center;
+        }
+
+        .gantt-label {
+            width: 150px;
+            font-weight: 600;
+            padding: 0 10px;
+            color: var(--trenitalia-dark);
+        }
+
+        .gantt-bar-container {
+            flex: 1;
+            position: relative;
+            height: 100%;
+        }
+
+        .gantt-bar {
+            height: 36px;
+            position: absolute;
+            border-radius: 4px;
+            opacity: 0.8;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .gantt-bar:hover {
+            opacity: 1;
+            transform: scaleY(1.1);
+            z-index: 10;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        /* ==================== FORM DI EDITING ==================== */
+        .edit-form {
+            background: var(--gray-light);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid var(--gray-medium);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: var(--trenitalia-dark);
+            font-size: 14px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 15px;
+            border-top: 1px solid var(--gray-medium);
+        }
+
+        /* ==================== ALERT E NOTIFICHE ==================== */
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            border-left-color: var(--danger);
+            color: #721c24;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-left-color: var(--warning);
+            color: #856404;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-left-color: var(--success);
+            color: #155724;
+        }
+
+        .alert-info {
+            background: var(--trenitalia-light);
+            border-left-color: var(--trenitalia-blue);
+            color: var(--trenitalia-dark);
+        }
+
+        /* ==================== MODAL ==================== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--gray-medium);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--trenitalia-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .close-modal:hover {
+            background: var(--gray-light);
+            color: var(--danger);
+        }
+
+        /* ==================== LOADING ==================== */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--trenitalia-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ==================== UTILITY ==================== */
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+        .text-warning { color: var(--warning); }
+        .text-info { color: var(--info); }
+        .text-primary { color: var(--trenitalia-blue); }
+
+        .mb-20 { margin-bottom: 20px; }
+        .mt-20 { margin-top: 20px; }
+        .ml-10 { margin-left: 10px; }
+        .mr-10 { margin-right: 10px; }
+
+        .hidden { display: none !important; }
+        .visible { display: block !important; }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .sidebar {
+                position: static;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            select, input {
+                min-width: 100%;
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-card {
+                padding: 12px;
+            }
+        }
+
+        /* ==================== TOOLTIP ==================== */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* ==================== TABS INTERNE ==================== */
+        .internal-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--gray-medium);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .internal-tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .internal-tab:hover {
+            color: var(--trenitalia-blue);
+        }
+
+        .internal-tab.active {
+            color: var(--trenitalia-blue);
+            border-bottom-color: var(--trenitalia-blue);
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* ==================== FILTRI AVANZATI ==================== */
+        .filters {
+            background: var(--gray-light);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--gray-medium);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 180px;
+        }
+
+        .filter-item label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-dark);
+            text-transform: uppercase;
+        }
+
+        /* ==================== PULSANTI AZIONE IN TABELLA ==================== */
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: nowrap;
+        }
+
+        .action-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .action-btn-edit {
+            background: var(--trenitalia-light);
+            color: var(--trenitalia-blue);
+        }
+
+        .action-btn-edit:hover {
+            background: var(--trenitalia-blue);
+            color: white;
+        }
+
+        .action-btn-delete {
+            background: #f8d7da;
+            color: var(--danger);
+        }
+
+        .action-btn-delete:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .action-btn-view {
+            background: #d4edda;
+            color: var(--success);
+        }
+
+        .action-btn-view:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        .action-btn-delay {
+            background: #fff3cd;
+            color: var(--warning);
+        }
+
+        .action-btn-delay:hover {
+            background: var(--warning);
+            color: #333;
+        }
+
+        /* ==================== DETTAGLIO ESPANDIBILE ==================== */
+        .details-row {
+            background: var(--gray-light) !important;
+            display: none;
+        }
+
+        .details-row.visible {
+            display: table-row;
+        }
+
+        .details-cell {
+            padding: 20px !important;
+            border-top: 1px solid var(--gray-medium);
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .detail-item {
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid var(--gray-medium);
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: var(--trenitalia-dark);
+        }
+
+        /* ==================== TIMELINE ==================== */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--trenitalia-blue);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -30px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--trenitalia-blue);
+            border: 2px solid white;
+            box-shadow: 0 0 0 3px var(--trenitalia-light);
+        }
+
+        .timeline-content {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--gray-medium);
+        }
+
+        .timeline-time {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .timeline-title {
+            font-weight: 600;
+            color: var(--trenitalia-dark);
+            margin-bottom: 5px;
+        }
+
+        /* ==================== COLORI PER TIPI TRENO ==================== */
+        .train-fr { background: var(--trenitalia-red); }
+        .train-fa { background: var(--trenitalia-blue); }
+        .train-ic { background: var(--trenitalia-dark); }
+        .train-reg { background: var(--success); }
+        .train-av { background: var(--warning); color: #333; }
+        .train-other { background: #6c757d; }
+
+        /* ==================== DRAG AND DROP ==================== */
+        .draggable {
+            cursor: move;
+            user-select: none;
+        }
+
+        .dragging {
+            opacity: 0.5;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--trenitalia-blue);
+            background: rgba(0, 102, 204, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: var(--trenitalia-blue);
+            margin: 10px 0;
+        }
+
+        /* ==================== SCROLLBAR PERSONALIZZATA ==================== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--trenitalia-blue);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--trenitalia-dark);
+        }
+    </style>
+</head>
+<body>
+    <!-- Struttura principale -->
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo-section">
+                <h1>🚄 Trenitalia AV</h1>
+                <p>Sistema Gestione Turni</p>
+            </div>
+
+            <div class="menu-section">
+                <h3><i class="fas fa-tachometer-alt"></i> Dashboard</h3>
+                <a href="#" class="menu-item active" onclick="changeSection('dashboard')">
+                    <i class="fas fa-home"></i> Panoramica
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('statistics')">
+                    <i class="fas fa-chart-bar"></i> Statistiche
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('alerts')">
+                    <i class="fas fa-bell"></i> Alert e Notifiche
+                </a>
+            </div>
+
+            <div class="menu-section">
+                <h3><i class="fas fa-train"></i> Gestione Turni</h3>
+                <a href="#" class="menu-item" onclick="changeSection('turni')">
+                    <i class="fas fa-list"></i> Tutti i Turni
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('nuovo-turno')">
+                    <i class="fas fa-plus-circle"></i> Nuovo Turno
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('turni-giornata')">
+                    <i class="fas fa-calendar-day"></i> Turni Giornata
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('turni-notturni')">
+                    <i class="fas fa-moon"></i> Turni Notturni
+                </a>
+            </div>
+
+            <div class="menu-section">
+                <h3><i class="fas fa-cogs"></i> Analisi e Ottimizzazione</h3>
+                <a href="#" class="menu-item" onclick="changeSection('sovrapposizioni')">
+                    <i class="fas fa-project-diagram"></i> Sovrapposizioni
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('ottimizzazione')">
+                    <i class="fas fa-robot"></i> Ottimizzazione
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('gantt')">
+                    <i class="fas fa-chart-bar"></i> Diagramma Gantt
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('mappa')">
+                    <i class="fas fa-map"></i> Mappa Impianti
+                </a>
+            </div>
+
+            <div class="menu-section">
+                <h3><i class="fas fa-exclamation-triangle"></i> Gestione Emergenze</h3>
+                <a href="#" class="menu-item" onclick="changeSection('ritardi')">
+                    <i class="fas fa-clock"></i> Ritardi Attivi
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('simulazione')">
+                    <i class="fas fa-play-circle"></i> Simulazione
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('storico')">
+                    <i class="fas fa-history"></i> Storico Emergenze
+                </a>
+            </div>
+
+            <div class="menu-section">
+                <h3><i class="fas fa-file-export"></i> Report e Esportazioni</h3>
+                <a href="#" class="menu-item" onclick="changeSection('report')">
+                    <i class="fas fa-file-alt"></i> Report Giornaliero
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('esporta')">
+                    <i class="fas fa-download"></i> Esporta Dati
+                </a>
+                <a href="#" class="menu-item" onclick="changeSection('stampa')">
+                    <i class="fas fa-print"></i> Stampa Report
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <p>Versione 2.0</p>
+                <p>Data: <span id="current-date"></span></p>
+                <p>Tutti i dati sono modificabili</p>
+            </div>
+        </div>
+
+        <!-- Contenuto Principale -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="main-header">
+                <div class="header-top">
+                    <div class="header-title">
+                        <h2>Sistema Gestione Turni Trenitalia AV</h2>
+                        <p>Tutti i dati sono modificabili in tempo reale</p>
+                    </div>
+                    <div class="control-group">
+                        <button class="btn btn-success" onclick="salvaDati()">
+                            <i class="fas fa-save"></i> Salva Modifiche
+                        </button>
+                        <button class="btn btn-info" onclick="caricaDati()">
+                            <i class="fas fa-sync"></i> Ricarica Dati
+                        </button>
+                        <button class="btn btn-warning" onclick="resetDati()">
+                            <i class="fas fa-redo"></i> Ripristina
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-impianti">10</div>
+                        <div class="stat-label">Impianti</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-turni">38</div>
+                        <div class="stat-label">Turni Attivi</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-treni">95</div>
+                        <div class="stat-label">Treni Gestiti</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-ritardi">0</div>
+                        <div class="stat-label">Ritardi Attivi</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-sovrapposizioni">0</div>
+                        <div class="stat-label">Sovrapposizioni</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-ottimizzabili">0</div>
+                        <div class="stat-label">Ottimizzabili</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controlli Dinamici -->
+            <div class="controls" id="dynamic-controls">
+                <!-- I controlli verranno caricati dinamicamente in base alla sezione -->
+                <div class="control-group">
+                    <button class="btn" onclick="eseguiAnalisiCompleta()">
+                        <i class="fas fa-sync-alt"></i> Analizza Tutto
+                    </button>
+                    <button class="btn btn-success" onclick="esportaExcel()">
+                        <i class="fas fa-file-excel"></i> Esporta Excel
+                    </button>
+                    <button class="btn btn-danger" onclick="simulaRitardoModal()">
+                        <i class="fas fa-exclamation-triangle"></i> Simula Ritardo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Area Contenuti Dinamica -->
+            <div class="content-area active" id="dashboard">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard - Panoramica Sistema
+                        </div>
+                        <div class="section-subtitle">
+                            Stato in tempo reale di tutti gli impianti e turni
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <select id="dashboard-filter" onchange="aggiornaDashboard()">
+                            <option value="tutti">Tutti gli impianti</option>
+                            <option value="MILANO">Solo Milano</option>
+                            <option value="ROMA">Solo Roma</option>
+                            <option value="BOLOGNA">Solo Bologna</option>
+                            <option value="ritardi">Solo con ritardi</option>
+                        </select>
+                        <input type="date" id="dashboard-date" onchange="aggiornaDashboard()" value="2024-06-15">
+                    </div>
+                </div>
+
+                <!-- Alert Rapid -->
+                <div id="alert-container"></div>
+
+                <!-- Grafici Dashboard -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h4><i class="fas fa-chart-pie"></i> Tipologie Treni</h4>
+                        <div class="chart-container">
+                            <canvas id="chart-tipologie-treni"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-chart-line"></i> Turni per Impianto</h4>
+                        <div class="chart-container">
+                            <canvas id="chart-turni-impianto"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-clock"></i> Distribuzione Oraria</h4>
+                        <div class="chart-container">
+                            <canvas id="chart-distribuzione-oraria"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Stato Ritardi</h4>
+                        <div class="chart-container">
+                            <canvas id="chart-ritardi"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Turni in Primo Piano -->
+                <div class="table-container mt-20">
+                    <h4 class="mb-20"><i class="fas fa-star"></i> Turni Critici in Corso</h4>
+                    <table id="tabella-turni-critici">
+                        <thead>
+                            <tr>
+                                <th>Impianto</th>
+                                <th>Turno</th>
+                                <th>Orario</th>
+                                <th>Treni</th>
+                                <th>Stato</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Impianti Stato -->
+                <div class="charts-grid mt-20">
+                    <div class="chart-card">
+                        <h4><i class="fas fa-train"></i> Stato Impianti</h4>
+                        <div id="impianti-status">
+                            <!-- Dinamico -->
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-lightbulb"></i> Raccomandazioni Immediate</h4>
+                        <div id="raccomandazioni-rapide">
+                            <!-- Dinamico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sezione: Tutti i Turni -->
+            <div class="content-area" id="turni">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">
+                            <i class="fas fa-list"></i> Gestione Completa Turni
+                        </div>
+                        <div class="section-subtitle">
+                            Tutti i turni sono modificabili direttamente nella tabella
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <button class="btn" onclick="aggiungiTurnoManuale()">
+                            <i class="fas fa-plus"></i> Nuovo Turno
+                        </button>
+                        <button class="btn btn-outline" onclick="abilitaEditingMassivo()">
+                            <i class="fas fa-edit"></i> Modifica Multipla
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtri Avanzati -->
+                <div class="filters">
+                    <div class="filter-group">
+                        <div class="filter-item">
+                            <label>Impianto</label>
+                            <select id="filter-impianto" onchange="filtraTurni()">
+                                <option value="">Tutti</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Tipo Turno</label>
+                            <select id="filter-tipo" onchange="filtraTurni()">
+                                <option value="">Tutti</option>
+                                <option value="diurno">Diurno</option>
+                                <option value="notturno">Notturno</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Fascia Oraria</label>
+                            <select id="filter-fascia" onchange="filtraTurni()">
+                                <option value="">Tutte</option>
+                                <option value="mattina">Mattina (04-12)</option>
+                                <option value="pomeriggio">Pomeriggio (12-20)</option>
+                                <option value="notte">Notte (20-04)</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Stato</label>
+                            <select id="filter-stato" onchange="filtraTurni()">
+                                <option value="">Tutti</option>
+                                <option value="normale">Normale</option>
+                                <option value="ritardo">In Ritardo</option>
+                                <option value="critico">Critico</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Cerca</label>
+                            <input type="text" id="search-turni" placeholder="Codice o treno..." onkeyup="filtraTurni()">
+                        </div>
+                        <button class="btn" onclick="resetFiltri()">
+                            <i class="fas fa-times"></i> Pulisci
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabella Turni Interattiva -->
+                <div class="table-container">
+                    <table id="tabella-turni-completa">
+                        <thead>
+                            <tr>
+                                <th width="40"><input type="checkbox" id="select-all" onclick="selezionaTutti()"></th>
+                                <th width="80">Azioni</th>
+                                <th>Impianto</th>
+                                <th>Codice Turno</th>
+                                <th>Inizio</th>
+                                <th>Fine</th>
+                                <th>Durata</th>
+                                <th>Treni</th>
+                                <th>Km</th>
+                                <th>Tipo</th>
+                                <th>Note</th>
+                                <th width="100">Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- I turni verranno caricati dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Azioni di Massa -->
+                <div id="azioni-massa" class="hidden mt-20">
+                    <div class="alert alert-info">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <div>
+                            <strong>Modifica multipla attiva</strong> - Selezionati: <span id="count-selezionati">0</span> turni
+                            <div class="action-buttons mt-10">
+                                <button class="btn btn-warning" onclick="modificaSelezionati()">
+                                    <i class="fas fa-edit"></i> Modifica Selezionati
+                                </button>
+                                <button class="btn btn-danger" onclick="eliminaSelezionati()">
+                                    <i class="fas fa-trash"></i> Elimina Selezionati
+                                </button>
+                                <button class="btn" onclick="applicaRitardoSelezionati()">
+                                    <i class="fas fa-clock"></i> Applica Ritardo
+                                </button>
+                                <button class="btn btn-success" onclick="esportaSelezionati()">
+                                    <i class="fas fa-download"></i> Esporta Selezionati
+                                </button>
+                                <button class="btn btn-outline" onclick="annullaSelezione()">
+                                    <i class="fas fa-times"></i> Annulla
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modifica Multipla -->
+                <div id="modifica-multipla" class="edit-form hidden">
+                    <h4><i class="fas fa-edit"></i> Modifica Turni Selezionati</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Cambia Impianto</label>
+                            <select id="edit-mass-impianto">
+                                <option value="">-- Non modificare --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Aggiungi Ritardo (minuti)</label>
+                            <input type="number" id="edit-mass-ritardo" min="0" max="240" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Cambia Tipo</label>
+                            <select id="edit-mass-tipo">
+                                <option value="">-- Non modificare --</option>
+                                <option value="Diurno">Diurno</option>
+                                <option value="Notturno">Notturno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Aggiungi Note</label>
+                            <input type="text" id="edit-mass-note" placeholder="Note aggiuntive...">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-success" onclick="applicaModificheMassive()">
+                            <i class="fas fa-check"></i> Applica Modifiche
+                        </button>
+                        <button class="btn btn-outline" onclick="annullaModificaMassiva()">
+                            <i class="fas fa-times"></i> Annulla
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sezione: Nuovo Turno -->
+            <div class="content-area" id="nuovo-turno">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">
+                            <i class="fas fa-plus-circle"></i> Crea Nuovo Turno
+                        </div>
+                        <div class="section-subtitle">
+                            Aggiungi manualmente un nuovo turno al sistema
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Creazione Turno -->
+                <div class="edit-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Impianto *</label>
+                            <select id="new-impianto" required>
+                                <option value="">Seleziona impianto...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Codice Turno *</label>
+                            <input type="text" id="new-codice" placeholder="Es: AV1M001" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Ora Inizio *</label>
+                            <input type="time" id="new-inizio" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Ora Fine *</label>
+                            <input type="time" id="new-fine" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Treni * (separati da virgola)</label>
+                            <input type="text" id="new-treni" placeholder="Es: FR 9500, IC 504" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Km Percorsi</label>
+                            <input type="number" id="new-km" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo Turno</label>
+                            <select id="new-tipo">
+                                <option value="Diurno">Diurno</option>
+                                <option value="Notturno">Notturno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Note</label>
+                            <textarea id="new-note" rows="3" placeholder="Note aggiuntive..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Equipaggio</label>
+                            <input type="text" id="new-equipaggio" placeholder="Nomi equipaggio...">
+                        </div>
+                        <div class="form-group">
+                            <label>Materiale Rotabile</label>
+                            <input type="text" id="new-materiale" placeholder="Es: ETR1000">
+                        </div>
+                    </div>
+
+                    <!-- Anteprima -->
+                    <div class="mt-20 mb-20">
+                        <h4><i class="fas fa-eye"></i> Anteprima Turno</h4>
+                        <div id="anteprima-turno" class="alert alert-info">
+                            Completa il form per vedere l'anteprima
+                        </div>
+                    </div>
+
+                    <!-- Azioni -->
+                    <div class="form-actions">
+                        <button class="btn btn-success" onclick="creaNuovoTurno()">
+                            <i class="fas fa-save"></i> Salva Turno
+                        </button>
+                        <button class="btn" onclick="generaCodiceAutomatico()">
+                            <i class="fas fa-magic"></i> Genera Codice
+                        </button>
+                        <button class="btn btn-outline" onclick="resetFormTurno()">
+                            <i class="fas fa-times"></i> Pulisci Form
+                        </button>
+                        <button class="btn btn-info" onclick="duplicaUltimoTurno()">
+                            <i class="fas fa-copy"></i> Duplica Ultimo
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Turni Recenti -->
+                <div class="table-container mt-20">
+                    <h4 class="mb-20"><i class="fas fa-history"></i> Ultimi Turni Aggiunti</h4>
+                    <table id="tabella-turni-recenti">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Impianto</th>
+                                <th>Codice</th>
+                                <th>Orario</th>
+                                <th>Treni</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sezione: Sovrapposizioni -->
+            <div class="content-area" id="sovrapposizioni">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">
+                            <i class="fas fa-project-diagram"></i> Analisi Sovrapposizioni
+                        </div>
+                        <div class="section-subtitle">
+                            Identifica e gestisci i turni che si sovrappongono
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <button class="btn" onclick="calcolaSovrapposizioni()">
+                            <i class="fas fa-calculator"></i> Ricalcola
+                        </button>
+                        <button class="btn btn-success" onclick="ottimizzaSovrapposizioni()">
+                            <i class="fas fa-check-circle"></i> Ottimizza Auto
+                        </button>
+                        <button class="btn btn-info" onclick="mostraGuidaSovrapposizioni()">
+                            <i class="fas fa-question-circle"></i> Guida
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabs Interni -->
+                <div class="internal-tabs">
+                    <div class="internal-tab active" onclick="cambiaSovrapposizioniTab(0)">Tutte le Sovrapposizioni</div>
+                    <div class="internal-tab" onclick="cambiaSovrapposizioniTab(1)">Ottimizzabili</div>
+                    <div class="internal-tab" onclick="cambiaSovrapposizioniTab(2)">Critiche</div>
+                    <div class="internal-tab" onclick="cambiaSovrapposizioniTab(3)">Grafico</div>
+                </div>
+
+                <!-- Tab 1: Tutte le Sovrapposizioni -->
+                <div class="tab-panel active" id="sovrapposizioni-tab1">
+                    <div class="filters">
+                        <div class="filter-group">
+                            <div class="filter-item">
+                                <label>Soglia Minima</label>
+                                <select id="soglia-sovrapposizione" onchange="filtraSovrapposizioni()">
+                                    <option value="0">Tutte</option>
+                                    <option value="30">30+ minuti</option>
+                                    <option value="60">60+ minuti</option>
+                                    <option value="120">120+ minuti</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>Distanza Massima</label>
+                                <select id="distanza-sovrapposizione" onchange="filtraSovrapposizioni()">
+                                    <option value="9999">Tutte</option>
+                                    <option value="100">Fino a 100km</option>
+                                    <option value="200">Fino a 200km</option>
+                                    <option value="300">Fino a 300km</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>Compatibilità</label>
+                                <select id="compatibilita-sovrapposizione" onchange="filtraSovrapposizioni()">
+                                    <option value="tutte">Tutte</option>
+                                    <option value="compatibili">Solo compatibili</option>
+                                    <option value="non-compatibili">Solo non compatibili</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="tabella-sovrapposizioni-completa">
+                            <thead>
+                                <tr>
+                                    <th width="40"></th>
+                                    <th>Impianto 1</th>
+                                    <th>Turno 1</th>
+                                    <th>Impianto 2</th>
+                                    <th>Turno 2</th>
+                                    <th>Sovrapposizione</th>
+                                    <th>Durata</th>
+                                    <th>Distanza</th>
+                                    <th>Compatibilità</th>
+                                    <th width="120">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Statistiche Sovrapposizioni -->
+                    <div class="charts-grid mt-20">
+                        <div class="chart-card">
+                            <h4><i class="fas fa-chart-bar"></i> Distribuzione Sovrapposizioni</h4>
+                            <div class="chart-container">
+                                <canvas id="chart-sovrapposizioni-distribuzione"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h4><i class="fas fa-chart-pie"></i> Compatibilità</h4>
+                            <div class="chart-container">
+                                <canvas id="chart-sovrapposizioni-compatibilita"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Ottimizzabili -->
+                <div class="tab-panel" id="sovrapposizioni-tab2">
+                    <div class="alert alert-success">
+                        <i class="fas fa-lightbulb"></i>
+                        <div>
+                            <strong>Sovrapposizioni Ottimizzabili</strong>
+                            <p>Queste sovrapposizioni possono essere gestite condividendo risorse tra impianti vicini.</p>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="tabella-sovrapposizioni-ottimizzabili">
+                            <thead>
+                                <tr>
+                                    <th>Impianto 1</th>
+                                    <th>Impianto 2</th>
+                                    <th>Distanza</th>
+                                    <th>Sovrapposizione</th>
+                                    <th>Risparmio Potenziale</th>
+                                    <th>Azioni Ottimizzazione</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pannello Ottimizzazione -->
+                    <div class="edit-form mt-20">
+                        <h4><i class="fas fa-cogs"></i> Ottimizzazione Manuale</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Seleziona Sovrapposizione</label>
+                                <select id="select-ottimizzazione">
+                                    <option value="">Scegli una sovrapposizione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo Ottimizzazione</label>
+                                <select id="tipo-ottimizzazione">
+                                    <option value="condivisione">Condivisione Equipaggio</option>
+                                    <option value="ridistribuzione">Ridistribuzione Turni</option>
+                                    <option value="accorpamento">Accorpamento Servizi</option>
+                                    <option value="orario">Modifica Orario</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Risparmio Stimato (ore/uomo)</label>
+                                <input type="number" id="risparmio-ottimizzazione" min="0" max="24" value="2">
+                            </div>
+                            <div class="form-group">
+                                <label>Note</label>
+                                <textarea id="note-ottimizzazione" rows="2" placeholder="Note sull'ottimizzazione..."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-success" onclick="applicaOttimizzazione()">
+                                <i class="fas fa-check"></i> Applica Ottimizzazione
+                            </button>
+                            <button class="btn" onclick="simulaOttimizzazione()">
+                                <i class="fas fa-play-circle"></i> Simula Risultato
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sezione: Diagramma Gantt -->
+            <div class="content-area" id="gantt">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">
+                            <i class="fas fa-chart-bar"></i> Diagramma Gantt - Turni per Impianto
+                        </div>
+                        <div class="section-subtitle">
+                            Visualizzazione temporale interattiva di tutti i turni
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <button class="btn" onclick="aggiornaGantt()">
+                            <i class="fas fa-redo"></i> Aggiorna
+                        </button>
+                        <button class="btn btn-success" onclick="stampaGantt()">
+                            <i class="fas fa-print"></i> Stampa
+                        </button>
+                        <button class="btn btn-info" onclick="esportaGantt()">
+                            <i class="fas fa-download"></i> Esporta
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Controlli Gantt -->
+                <div class="filters">
+                    <div class="filter-group">
+                        <div class="filter-item">
+                            <label>Seleziona Impianti</label>
+                            <select id="gantt-impianti" multiple size="4" onchange="aggiornaGantt()">
+                                <!-- Opzioni caricate dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Fascia Oraria</label>
+                            <select id="gantt-fascia" onchange="aggiornaGantt()">
+                                <option value="tutto">Tutto il giorno (00-24)</option>
+                                <option value="mattina">Mattina (04-12)</option>
+                                <option value="pomeriggio">Pomeriggio (12-20)</option>
+                                <option value="notte">Notte (20-04)</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Mostra</label>
+                            <select id="gantt-mostra" onchange="aggiornaGantt()">
+                                <option value="tutti">Tutti i turni</option>
+                                <option value="diurni">Solo diurni</option>
+                                <option value="notturni">Solo notturni</option>
+                                <option value="ritardi">Solo con ritardi</option>
+                                <option value="critici">Solo critici</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Scala Temporale</label>
+                            <select id="gantt-scala" onchange="aggiornaGantt()">
+                                <option value="60">1 ora = 60px</option>
+                                <option value="30">1 ora = 30px</option>
+                                <option value="15">1 ora = 15px</option>
+                                <option value="120">1 ora = 120px</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Gruppi</label>
+                            <select id="gantt-gruppi" onchange="aggiornaGantt()">
+                                <option value="impianto">Per Impianto</option>
+                                <option value="tipo">Per Tipo Turno</option>
+                                <option value="stato">Per Stato</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Orizzontale -->
+                <div class="gantt-timeline" id="gantt-timeline">
+                    <!-- Timeline dinamica -->
+                </div>
+
+                <!-- Diagramma Gantt -->
+                <div class="gantt-container" id="gantt-container">
+                    <!-- Gantt dinamico -->
+                </div>
+
+                <!-- Legenda e Info -->
+                <div class="charts-grid mt-20">
+                    <div class="chart-card">
+                        <h4><i class="fas fa-key"></i> Legenda</h4>
+                        <div id="gantt-legenda" style="padding: 15px;">
+                            <!-- Legenda dinamica -->
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-info-circle"></i> Informazioni Selezione</h4>
+                        <div id="gantt-info" style="padding: 15px;">
+                            <p>Clicca su una barra per vedere i dettagli del turno</p>
+                            <p>Trascina le barre per modificare gli orari</p>
+                            <p>Doppio click per modificare il turno</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dettaglio Turno Selezionato -->
+                <div id="gantt-dettaglio" class="edit-form hidden mt-20">
+                    <h4><i class="fas fa-edit"></i> Modifica Turno dal Gantt</h4>
+                    <div id="gantt-form-container">
+                        <!-- Form di modifica dinamico -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sezione: Gestione Ritardi -->
+            <div class="content-area" id="ritardi">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">
+                            <i class="fas fa-clock"></i> Gestione Ritardi in Tempo Reale
+                        </div>
+                        <div class="section-subtitle">
+                            Monitora, gestisci e risolvi i ritardi attivi
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <button class="btn btn-danger" onclick="nuovoRitardoManuale()">
+                            <i class="fas fa-plus"></i> Nuovo Ritardo
+                        </button>
+                        <button class="btn btn-success" onclick="risolviTuttiRitardi()">
+                            <i class="fas fa-check"></i> Risolvi Tutti
+                        </button>
+                        <button class="btn" onclick="notificaEquipaggi()">
+                            <i class="fas fa-bell"></i> Notifica Tutti
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ritardi Attivi -->
+                <div class="alert alert-danger" id="alert-ritardi-attivi">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <strong>ATTENZIONE: <span id="count-ritardi-attivi">0</span> ritardi attivi</strong>
+                        <p id="riepilogo-ritardi">Nessun ritardo attivo al momento</p>
+                    </div>
+                </div>
+
+                <!-- Tabs Ritardi -->
+                <div class="internal-tabs">
+                    <div class="internal-tab active" onclick="cambiaRitardiTab(0)">Ritardi Attivi</div>
+                    <div class="internal-tab" onclick="cambiaRitardiTab(1)">Impatto a Cascata</div>
+                    <div class="internal-tab" onclick="cambiaRitardiTab(2)">Azioni Correttive</div>
+                    <div class="internal-tab" onclick="cambiaRitardiTab(3)">Storico</div>
+                </div>
+
+                <!-- Tab 1: Ritardi Attivi -->
+                <div class="tab-panel active" id="ritardi-tab1">
+                    <div class="table-container">
+                        <table id="tabella-ritardi-attivi">
+                            <thead>
+                                <tr>
+                                    <th width="40"></th>
+                                    <th>Turno</th>
+                                    <th>Impianto</th>
+                                    <th>Ritardo</th>
+                                    <th>Causa</th>
+                                    <th>Impatto</th>
+                                    <th>Inizio</th>
+                                    <th>Durata</th>
+                                    <th>Priorità</th>
+                                    <th width="150">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Dettaglio Ritardo -->
+                    <div id="dettaglio-ritardo" class="edit-form hidden mt-20">
+                        <h4><i class="fas fa-search"></i> Dettaglio Ritardo</h4>
+                        <div id="dettaglio-ritardo-content">
+                            <!-- Contenuto dinamico -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Impatto a Cascata -->
+                <div class="tab-panel" id="ritardi-tab2">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-project-diagram"></i>
+                        <div>
+                            <strong>Analisi Impatto a Cascata</strong>
+                            <p>Visualizza come i ritardi si propagano attraverso il sistema</p>
+                        </div>
+                    </div>
+
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="chart-impatto-cascata"></canvas>
+                    </div>
+
+                    <div class="table-container mt-20">
+                        <h4 class="mb-20">Turni Affetti da Ritardi</h4>
+                        <table id="tabella-impatto-cascata">
+                            <thead>
+                                <tr>
+                                    <th>Turno Origine</th>
+                                    <th>Turno Affetto</th>
+                                    <th>Impatto</th>
+                                    <th>Orario Previsto</th>
+                                    <th>Orario Reale</th>
+                                    <th>Stato</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sezione: Report e Esportazioni -->
+            <div class="content-area" id="esporta">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">
+                            <i class="fas fa-download"></i> Esportazione Dati Completa
+                        </div>
+                        <div class="section-subtitle">
+                            Esporta tutti i dati in vari formati per analisi esterne
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opzioni Esportazione -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h4><i class="fas fa-file-excel"></i> Esporta in Excel</h4>
+                        <div style="padding: 20px;">
+                            <p>Esporta tutti i dati in formato Excel per analisi avanzate.</p>
+                            <div class="form-group mt-10">
+                                <label>Seleziona Dati da Esportare</label>
+                                <select id="export-excel-option" multiple size="5">
+                                    <option value="turni" selected>Tutti i Turni</option>
+                                    <option value="sovrapposizioni" selected>Sovrapposizioni</option>
+                                    <option value="ritardi" selected>Ritardi</option>
+                                    <option value="ottimizzazione" selected>Ottimizzazione</option>
+                                    <option value="statistiche" selected>Statistiche</option>
+                                    <option value="impianti">Impianti</option>
+                                    <option value="equipaggi">Equipaggi</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-success mt-10" style="width: 100%;" onclick="esportaExcelCompleto()">
+                                <i class="fas fa-file-excel"></i> Genera Excel Completo
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h4><i class="fas fa-file-code"></i> Esporta in JSON</h4>
+                        <div style="padding: 20px;">
+                            <p>Esporta dati in formato JSON per integrazioni con altri sistemi.</p>
+                            <div class="form-group mt-10">
+                                <label>Formato JSON</label>
+                                <select id="export-json-format">
+                                    <option value="completo">Dati Completi</option>
+                                    <option value="semplice">Struttura Semplice</option>
+                                    <option value="api">Formato API</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-info mt-10" style="width: 100%;" onclick="esportaJSON()">
+                                <i class="fas fa-file-code"></i> Scarica JSON
+                            </button>
+                            <button class="btn btn-outline mt-10" style="width: 100%;" onclick="mostraJSON()">
+                                <i class="fas fa-eye"></i> Visualizza JSON
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h4><i class="fas fa-file-pdf"></i> Report PDF</h4>
+                        <div style="padding: 20px;">
+                            <p>Genera report PDF professionali per la direzione.</p>
+                            <div class="form-group mt-10">
+                                <label>Tipo Report</label>
+                                <select id="export-pdf-type">
+                                    <option value="giornaliero">Report Giornaliero</option>
+                                    <option value="settimanale">Report Settimanale</option>
+                                    <option value="ritardi">Report Ritardi</option>
+                                    <option value="ottimizzazione">Report Ottimizzazione</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-danger mt-10" style="width: 100%;" onclick="generaPDF()">
+                                <i class="fas fa-file-pdf"></i> Genera PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Esportazione Avanzata -->
+                <div class="edit-form mt-20">
+                    <h4><i class="fas fa-cogs"></i> Esportazione Personalizzata</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Data Inizio</label>
+                            <input type="date" id="export-date-start" value="2024-06-15">
+                        </div>
+                        <div class="form-group">
+                            <label>Data Fine</label>
+                            <input type="date" id="export-date-end" value="2024-06-15">
+                        </div>
+                        <div class="form-group">
+                            <label>Impianti</label>
+                            <select id="export-impianti" multiple size="3">
+                                <!-- Opzioni caricate dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Formato</label>
+                            <select id="export-format">
+                                <option value="excel">Excel (.xlsx)</option>
+                                <option value="csv">CSV (.csv)</option>
+                                <option value="json">JSON (.json)</option>
+                                <option value="xml">XML (.xml)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Includi</label>
+                            <div style="display: flex; flex-direction: column; gap: 5px;">
+                                <label><input type="checkbox" id="export-include-treni" checked> Dettaglio Treni</label>
+                                <label><input type="checkbox" id="export-include-equipaggi" checked> Equipaggi</label>
+                                <label><input type="checkbox" id="export-include-note" checked> Note</label>
+                                <label><input type="checkbox" id="export-include-statistiche" checked> Statistiche</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-success" onclick="esportaPersonalizzato()">
+                            <i class="fas fa-download"></i> Esporta Personalizzato
+                        </button>
+                        <button class="btn" onclick="anteprimaEsportazione()">
+                            <i class="fas fa-eye"></i> Anteprima
+                        </button>
+                        <button class="btn btn-outline" onclick="programmaEsportazione()">
+                            <i class="fas fa-clock"></i> Programma
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cronologia Esportazioni -->
+                <div class="table-container mt-20">
+                    <h4 class="mb-20"><i class="fas fa-history"></i> Cronologia Esportazioni</h4>
+                    <table id="tabella-cronologia-esportazioni">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Dati</th>
+                                <th>Formato</th>
+                                <th>Dimensioni</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Altre sezioni verranno caricate dinamicamente -->
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-generico" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-titolo">Dettaglio</h2>
+                <button class="close-modal" onclick="chiudiModal()">&times;</button>
+            </div>
+            <div id="modal-corpo"></div>
+        </div>
+    </div>
+
+    <!-- Script principale -->
+    <script>
+        // ==================== DATI E VARIABILI GLOBALI ====================
+        const DATI_SISTEMA = {
+            impianti: [],
+            turni: [],
+            ritardi: [],
+            sovrapposizioni: [],
+            ottimizzazione: [],
+            statistiche: {},
+            storico: [],
+            utente: {
+                nome: "Operatore Trenitalia",
+                ruolo: "Gestore Turni",
+                impianto: "Tutti"
+            },
+            configurazione: {
+                sogliaOttimizzazione: 200, // km
+                sogliaRitardoCritico: 30, // minuti
+                notificaAutomatica: true,
+                salvataggioAuto: true,
+                tema: "chiaro"
+            }
+        };
+
+        let editingMode = false;
+        let currentSection = 'dashboard';
+        let selectedTurni = new Set();
+        let charts = {};
+        let ganttData = {};
+        let dragSource = null;
+
+        // ==================== INIZIALIZZAZIONE ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("🚀 Sistema Trenitalia AV - Inizializzazione");
+            
+            // Imposta data corrente
+            const now = luxon.DateTime.now();
+            document.getElementById('current-date').textContent = now.toLocaleString(luxon.DateTime.DATE_FULL);
+            document.getElementById('dashboard-date').value = now.toISODate();
+            document.getElementById('export-date-start').value = now.toISODate();
+            document.getElementById('export-date-end').value = now.toISODate();
+            
+            // Carica dati iniziali
+            caricaDatiIniziali();
+            
+            // Inizializza interfaccia
+            inizializzaInterfaccia();
+            
+            // Carica dati salvati (se presenti)
+            caricaDatiSalvati();
+            
+            // Aggiorna dashboard
+            setTimeout(() => {
+                aggiornaDashboard();
+                aggiornaStatisticheHeader();
+            }, 500);
+            
+            // Setup autosalvataggio
+            if (DATI_SISTEMA.configurazione.salvataggioAuto) {
+                setInterval(salvaDati, 30000); // Salva ogni 30 secondi
+            }
+            
+            // Setup notifiche
+            if (DATI_SISTEMA.configurazione.notificaAutomatica) {
+                setInterval(controllaNotifiche, 60000); // Controlla ogni minuto
+            }
+        });
+
+        // ==================== FUNZIONI DI INIZIALIZZAZIONE ====================
+        function caricaDatiIniziali() {
+            console.log("📊 Caricamento dati iniziali...");
+            
+            // Dati di esempio (possono essere sovrascritti da dati salvati)
+            DATI_SISTEMA.impianti = [
+                {
+                    id: 1,
+                    nome: "MILANO",
+                    regione: "Lombardia",
+                    coordinate: { lat: 45.4642, lon: 9.1900 },
+                    stato: "operativo",
+                    capacita: 8,
+                    priorita: "alta",
+                    note: "Hub principale"
+                },
+                {
+                    id: 2,
+                    nome: "ROMA",
+                    regione: "Lazio",
+                    coordinate: { lat: 41.9005, lon: 12.4958 },
+                    stato: "operativo",
+                    capacita: 6,
+                    priorita: "alta",
+                    note: "Hub centrale"
+                },
+                {
+                    id: 3,
+                    nome: "BOLOGNA",
+                    regione: "Emilia-Romagna",
+                    coordinate: { lat: 44.5051, lon: 11.3437 },
+                    stato: "operativo",
+                    capacita: 5,
+                    priorita: "media",
+                    note: "Nodo intermedio"
+                },
+                {
+                    id: 4,
+                    nome: "NAPOLI",
+                    regione: "Campania",
+                    coordinate: { lat: 40.8539, lon: 14.3056 },
+                    stato: "operativo",
+                    capacita: 4,
+                    priorita: "media",
+                    note: "Hub meridionale"
+                },
+                {
+                    id: 5,
+                    nome: "FIRENZE",
+                    regione: "Toscana",
+                    coordinate: { lat: 43.7765, lon: 11.2480 },
+                    stato: "operativo",
+                    capacita: 4,
+                    priorita: "media",
+                    note: ""
+                },
+                {
+                    id: 6,
+                    nome: "TORINO",
+                    regione: "Piemonte",
+                    coordinate: { lat: 45.0703, lon: 7.6869 },
+                    stato: "operativo",
+                    capacita: 3,
+                    priorita: "bassa",
+                    note: ""
+                },
+                {
+                    id: 7,
+                    nome: "VENEZIA",
+                    regione: "Veneto",
+                    coordinate: { lat: 45.4342, lon: 12.3388 },
+                    stato: "operativo",
+                    capacita: 3,
+                    priorita: "bassa",
+                    note: ""
+                },
+                {
+                    id: 8,
+                    nome: "GENOVA",
+                    regione: "Liguria",
+                    coordinate: { lat: 44.4142, lon: 8.9422 },
+                    stato: "operativo",
+                    capacita: 3,
+                    priorita: "bassa",
+                    note: ""
+                },
+                {
+                    id: 9,
+                    nome: "VERONA",
+                    regione: "Veneto",
+                    coordinate: { lat: 45.4384, lon: 10.9916 },
+                    stato: "operativo",
+                    capacita: 3,
+                    priorita: "bassa",
+                    note: ""
+                },
+                {
+                    id: 10,
+                    nome: "ANCONA",
+                    regione: "Marche",
+                    coordinate: { lat: 43.6158, lon: 13.5189 },
+                    stato: "operativo",
+                    capacita: 3,
+                    priorita: "bassa",
+                    note: ""
+                }
+            ];
+
+            // Genera turni di esempio
+            generaTurniEsempio();
+            
+            // Genera ritardi di esempio
+            generaRitardiEsempio();
+            
+            // Calcola sovrapposizioni
+            calcolaSovrapposizioni(true);
+            
+            // Calcola ottimizzazione
+            calcolaOttimizzazione(true);
+        }
+
+        function inizializzaInterfaccia() {
+            console.log("🎨 Inizializzazione interfaccia...");
+            
+            // Popola dropdown impianti
+            popolaSelectImpianti();
+            
+            // Inizializza grafici
+            inizializzaGrafici();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Aggiorna menu attivo
+            updateActiveMenu();
+            
+            // Setup drag and drop
+            setupDragAndDrop();
+        }
+
+        function popolaSelectImpianti() {
+            const impiantiSelects = [
+                'filter-impianto', 'new-impianto', 'edit-mass-impianto', 
+                'gantt-impianti', 'export-impianti', 'select-ottimizzazione'
+            ];
+            
+            impiantiSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    select.innerHTML = '<option value="">Seleziona...</option>' +
+                        DATI_SISTEMA.impianti.map(imp => 
+                            `<option value="${imp.nome}">${imp.nome}</option>`
+                        ).join('');
+                    
+                    // Per select multipli
+                    if (select.multiple) {
+                        select.innerHTML = DATI_SISTEMA.impianti.map(imp => 
+                            `<option value="${imp.nome}" selected>${imp.nome}</option>`
+                        ).join('');
+                    }
+                }
+            });
+        }
+
+        // ==================== FUNZIONI DI GESTIONE TURNI ====================
+        function generaTurniEsempio() {
+            DATI_SISTEMA.turni = [];
+            
+            const tipiTreno = ['FR', 'FA', 'IC', 'REG', 'AV'];
+            const percorsi = {
+                'MILANO': ['MI-RO', 'MI-NA', 'MI-BO', 'MI-TO', 'MI-VE'],
+                'ROMA': ['RO-NA', 'RO-MI', 'RO-BO', 'RO-FI', 'RO-VE'],
+                'BOLOGNA': ['BO-MI', 'BO-RO', 'BO-FI', 'BO-VE', 'BO-TO'],
+                'NAPOLI': ['NA-RO', 'NA-MI', 'NA-BO', 'NA-FI', 'NA-TO'],
+                'FIRENZE': ['FI-RO', 'FI-MI', 'FI-BO', 'FI-NA', 'FI-VE'],
+                'TORINO': ['TO-MI', 'TO-BO', 'TO-RO', 'TO-NA', 'TO-GE'],
+                'VENEZIA': ['VE-MI', 'VE-BO', 'VE-RO', 'VE-FI', 'VE-TO'],
+                'GENOVA': ['GE-MI', 'GE-TO', 'GE-BO', 'GE-RO', 'GE-NA'],
+                'VERONA': ['VR-MI', 'VR-VE', 'VR-BO', 'VR-RO', 'VR-TO'],
+                'ANCONA': ['AN-RO', 'AN-MI', 'AN-BO', 'AN-FI', 'AN-NA']
+            };
+            
+            let idCounter = 1;
+            
+            DATI_SISTEMA.impianti.forEach(impianto => {
+                const numTurni = impianto.capacita;
+                const baseOra = 4 + Math.floor(Math.random() * 4); // Tra le 4 e le 8
+                
+                for (let i = 0; i < numTurni; i++) {
+                    const oraInizio = (baseOra + i * 2) % 24;
+                    const oraFine = (oraInizio + 8 + Math.floor(Math.random() * 3)) % 24;
+                    
+                    const numTreni = 1 + Math.floor(Math.random() * 3);
+                    const treni = [];
+                    for (let j = 0; j < numTreni; j++) {
+                        const tipo = tipiTreno[Math.floor(Math.random() * tipiTreno.length)];
+                        const numero = Math.floor(Math.random() * 9000) + 1000;
+                        treni.push(`${tipo} ${numero}`);
+                    }
+                    
+                    const km = Math.floor(Math.random() * 800) + 100;
+                    const notturno = oraInizio >= 20 || oraInizio < 4;
+                    
+                    DATI_SISTEMA.turni.push({
+                        id: idCounter++,
+                        impianto: impianto.nome,
+                        codice: `${impianto.nome.substring(0, 3)}${i+1}`.padStart(6, '0'),
+                        inizio: `${oraInizio.toString().padStart(2, '0')}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
+                        fine: `${oraFine.toString().padStart(2, '0')}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
+                        treni: treni,
+                        km: km,
+                        tipo: notturno ? 'Notturno' : 'Diurno',
+                        note: percorsi[impianto.nome] ? percorsi[impianto.nome][i] || '' : '',
+                        stato: 'normale',
+                        ritardo: 0,
+                        equipaggio: `Equipaggio ${impianto.nome.substring(0, 3)}${i+1}`,
+                        materiale: `ETR${Math.floor(Math.random() * 1000) + 400}`,
+                        dataCreazione: luxon.DateTime.now().toISO(),
+                        dataModifica: luxon.DateTime.now().toISO()
+                    });
+                }
+            });
+        }
+
+        function aggiornaTabellaTurni() {
+            const tbody = document.getElementById('tabella-turni-completa')?.querySelector('tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            DATI_SISTEMA.turni.forEach(turno => {
+                const tr = document.createElement('tr');
+                tr.dataset.id = turno.id;
+                tr.dataset.impianto = turno.impianto;
+                tr.dataset.stato = turno.stato;
+                tr.dataset.tipo = turno.tipo;
+                
+                // Calcola durata
+                const inizio = parseOra(turno.inizio);
+                const fine = parseOra(turno.fine);
+                const durata = calcolaDurata(inizio, fine);
+                
+                // Determina classe stato
+                let statoClass = 'badge-success';
+                let statoText = 'Normale';
+                if (turno.ritardo > 0) {
+                    statoClass = turno.ritardo > 30 ? 'badge-danger' : 'badge-warning';
+                    statoText = turno.ritardo > 30 ? 'Critico' : `Ritardo ${turno.ritardo} min`;
+                } else if (turno.stato === 'critico') {
+                    statoClass = 'badge-danger';
+                    statoText = 'Critico';
+                }
+                
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="turno-checkbox" value="${turno.id}" onchange="toggleTurnoSelezionato(${turno.id}, this.checked)"></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="action-btn action-btn-view" onclick="visualizzaTurno(${turno.id})" title="Visualizza">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn action-btn-edit" onclick="modificaTurno(${turno.id})" title="Modifica">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="action-btn action-btn-delay" onclick="aggiungiRitardoTurno(${turno.id})" title="Aggiungi ritardo">
+                                <i class="fas fa-clock"></i>
+                            </button>
+                            <button class="action-btn action-btn-delete" onclick="eliminaTurno(${turno.id})" title="Elimina">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td><strong>${turno.impianto}</strong></td>
+                    <td><strong>${turno.codice}</strong></td>
+                    <td>${turno.inizio}</td>
+                    <td>${turno.fine}</td>
+                    <td>${durata}</td>
+                    <td>${turno.treni.map(t => `<span class="badge ${getTrenoClass(t)}">${t}</span>`).join(' ')}</td>
+                    <td>${turno.km}</td>
+                    <td><span class="badge ${turno.tipo === 'Notturno' ? 'badge-info' : 'badge-primary'}">${turno.tipo}</span></td>
+                    <td>${turno.note || ''}</td>
+                    <td><span class="badge ${statoClass}">${statoText}</span></td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getTrenoClass(treno) {
+            if (treno.startsWith('FR')) return 'badge-danger';
+            if (treno.startsWith('FA')) return 'badge-primary';
+            if (treno.startsWith('IC')) return 'badge-info';
+            if (treno.startsWith('REG')) return 'badge-success';
+            if (treno.startsWith('AV')) return 'badge-warning';
+            return 'badge-primary';
+        }
+
+        function parseOra(oraString) {
+            const [ore, minuti] = oraString.split(':').map(Number);
+            return ore * 60 + minuti;
+        }
+
+        function calcolaDurata(inizioMin, fineMin) {
+            let durata = fineMin - inizioMin;
+            if (durata < 0) durata += 24 * 60; // Gestisce il passaggio di mezzanotte
+            const ore = Math.floor(durata / 60);
+            const minuti = durata % 60;
+            return `${ore.toString().padStart(2, '0')}:${minuti.toString().padStart(2, '0')}`;
+        }
+
+        // ==================== FUNZIONI INTERFACCIA ====================
+        function changeSection(sectionId) {
+            // Nascondi tutte le sezioni
+            document.querySelectorAll('.content-area').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Rimuovi active da tutti i menu
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Mostra la sezione selezionata
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.add('active');
+                currentSection = sectionId;
+                
+                // Aggiorna il menu attivo
+                document.querySelector(`.menu-item[onclick*="${sectionId}"]`)?.classList.add('active');
+                
+                // Aggiorna i controlli dinamici
+                aggiornaControlliSezione(sectionId);
+                
+                // Carica i dati specifici della sezione
+                caricaDatiSezione(sectionId);
+            }
+        }
+
+        function aggiornaControlliSezione(sectionId) {
+            const controlsDiv = document.getElementById('dynamic-controls');
+            
+            switch(sectionId) {
+                case 'dashboard':
+                    controlsDiv.innerHTML = `
+                        <div class="control-group">
+                            <button class="btn" onclick="eseguiAnalisiCompleta()">
+                                <i class="fas fa-sync-alt"></i> Aggiorna Tutto
+                            </button>
+                            <button class="btn btn-success" onclick="generaReportGiornaliero()">
+                                <i class="fas fa-file-alt"></i> Report Giornaliero
+                            </button>
+                            <select id="dashboard-refresh" onchange="impostaAutoRefresh(this.value)">
+                                <option value="0">Auto-refresh: Off</option>
+                                <option value="30">30 secondi</option>
+                                <option value="60">1 minuto</option>
+                                <option value="300">5 minuti</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'turni':
+                    controlsDiv.innerHTML = `
+                        <div class="control-group">
+                            <button class="btn" onclick="aggiungiTurnoManuale()">
+                                <i class="fas fa-plus"></i> Nuovo Turno
+                            </button>
+                            <button class="btn btn-outline" onclick="abilitaEditingMassivo()">
+                                <i class="fas fa-edit"></i> Modifica Multipla
+                            </button>
+                            <button class="btn btn-info" onclick="importaTurni()">
+                                <i class="fas fa-upload"></i> Importa da Excel
+                            </button>
+                            <button class="btn btn-warning" onclick="verificaConsistenza()">
+                                <i class="fas fa-check-circle"></i> Verifica Dati
+                            </button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'sovrapposizioni':
+                    controlsDiv.innerHTML = `
+                        <div class="control-group">
+                            <button class="btn" onclick="calcolaSovrapposizioni()">
+                                <i class="fas fa-calculator"></i> Ricalcola
+                            </button>
+                            <button class="btn btn-success" onclick="ottimizzaSovrapposizioni()">
+                                <i class="fas fa-check-circle"></i> Ottimizza Auto
+                            </button>
+                            <button class="btn btn-danger" onclick="risolviConflitti()">
+                                <i class="fas fa-exclamation-triangle"></i> Risolvi Conflitti
+                            </button>
+                        </div>
+                    `;
+                    break;
+                    
+                default:
+                    controlsDiv.innerHTML = `
+                        <div class="control-group">
+                            <button class="btn" onclick="eseguiAnalisiCompleta()">
+                                <i class="fas fa-sync-alt"></i> Analizza Tutto
+                            </button>
+                            <button class="btn btn-success" onclick="esportaExcel()">
+                                <i class="fas fa-file-excel"></i> Esporta Excel
+                            </button>
+                            <button class="btn btn-danger" onclick="simulaRitardoModal()">
+                                <i class="fas fa-exclamation-triangle"></i> Simula Ritardo
+                            </button>
+                        </div>
+                    `;
+            }
+        }
+
+        function caricaDatiSezione(sectionId) {
+            switch(sectionId) {
+                case 'dashboard':
+                    aggiornaDashboard();
+                    break;
+                case 'turni':
+                    aggiornaTabellaTurni();
+                    break;
+                case 'nuovo-turno':
+                    aggiornaFormNuovoTurno();
+                    break;
+                case 'sovrapposizioni':
+                    caricaSovrapposizioni();
+                    break;
+                case 'gantt':
+                    aggiornaGantt();
+                    break;
+                case 'ritardi':
+                    aggiornaRitardi();
+                    break;
+                case 'esporta':
+                    aggiornaEsportazioni();
+                    break;
+            }
+        }
+
+        // ==================== FUNZIONI DASHBOARD ====================
+        function aggiornaDashboard() {
+            // Aggiorna statistiche
+            const stats = calcolaStatistiche();
+            
+            document.getElementById('stat-impianti').textContent = DATI_SISTEMA.impianti.length;
+            document.getElementById('stat-turni').textContent = DATI_SISTEMA.turni.length;
+            document.getElementById('stat-treni').textContent = stats.treniTotali;
+            document.getElementById('stat-ritardi').textContent = stats.ritardiAttivi;
+            document.getElementById('stat-sovrapposizioni').textContent = DATI_SISTEMA.sovrapposizioni.length;
+            document.getElementById('stat-ottimizzabili').textContent = stats.sovrapposizioniOttimizzabili;
+            
+            // Aggiorna grafici
+            aggiornaGraficiDashboard();
+            
+            // Aggiorna alert
+            aggiornaAlertDashboard();
+            
+            // Aggiorna turni critici
+            aggiornaTurniCritici();
+            
+            // Aggiorna stato impianti
+            aggiornaStatoImpianti();
+            
+            // Aggiorna raccomandazioni
+            aggiornaRaccomandazioniRapide();
+        }
+
+        function calcolaStatistiche() {
+            const treniTotali = DATI_SISTEMA.turni.reduce((sum, turno) => sum + turno.treni.length, 0);
+            const ritardiAttivi = DATI_SISTEMA.turni.filter(t => t.ritardo > 0).length;
+            const sovrapposizioniOttimizzabili = DATI_SISTEMA.sovrapposizioni.filter(s => s.compatibile).length;
+            const kmTotali = DATI_SISTEMA.turni.reduce((sum, turno) => sum + turno.km, 0);
+            
+            return {
+                treniTotali,
+                ritardiAttivi,
+                sovrapposizioniOttimizzabili,
+                kmTotali,
+                turniNotturni: DATI_SISTEMA.turni.filter(t => t.tipo === 'Notturno').length,
+                turniCritici: DATI_SISTEMA.turni.filter(t => t.stato === 'critico').length
+            };
+        }
+
+        function aggiornaGraficiDashboard() {
+            // Chart 1: Tipologie Treni
+            const tipologie = { FR: 0, FA: 0, IC: 0, REG: 0, AV: 0, ALTRI: 0 };
+            DATI_SISTEMA.turni.forEach(turno => {
+                turno.treni.forEach(treno => {
+                    if (treno.startsWith('FR')) tipologie.FR++;
+                    else if (treno.startsWith('FA')) tipologie.FA++;
+                    else if (treno.startsWith('IC')) tipologie.IC++;
+                    else if (treno.startsWith('REG')) tipologie.REG++;
+                    else if (treno.startsWith('AV')) tipologie.AV++;
+                    else tipologie.ALTRI++;
+                });
+            });
+            
+            if (charts.tipologieTreni) {
+                charts.tipologieTreni.data.datasets[0].data = Object.values(tipologie);
+                charts.tipologieTreni.update();
+            }
+            
+            // Chart 2: Turni per Impianto
+            const impianti = DATI_SISTEMA.impianti.map(i => i.nome);
+            const turniPerImpianto = impianti.map(imp => 
+                DATI_SISTEMA.turni.filter(t => t.impianto === imp).length
+            );
+            
+            if (charts.turniImpianto) {
+                charts.turniImpianto.data.labels = impianti;
+                charts.turniImpianto.data.datasets[0].data = turniPerImpianto;
+                charts.turniImpianto.update();
+            }
+            
+            // Chart 3: Distribuzione Oraria
+            const fasce = ['00-04', '04-08', '08-12', '12-16', '16-20', '20-24'];
+            const turniPerFascia = fasce.map((fascia, idx) => {
+                const [inizioFascia, fineFascia] = fascia.split('-').map(Number);
+                return DATI_SISTEMA.turni.filter(turno => {
+                    const oraInizio = parseInt(turno.inizio.split(':')[0]);
+                    return oraInizio >= inizioFascia && oraInizio < fineFascia;
+                }).length;
+            });
+            
+            if (charts.distribuzioneOraria) {
+                charts.distribuzioneOraria.data.datasets[0].data = turniPerFascia;
+                charts.distribuzioneOraria.update();
+            }
+            
+            // Chart 4: Ritardi
+            const statiRitardi = {
+                'Normale': DATI_SISTEMA.turni.filter(t => t.ritardo === 0).length,
+                'Ritardo < 30min': DATI_SISTEMA.turni.filter(t => t.ritardo > 0 && t.ritardo <= 30).length,
+                'Ritardo > 30min': DATI_SISTEMA.turni.filter(t => t.ritardo > 30).length,
+                'Critico': DATI_SISTEMA.turni.filter(t => t.stato === 'critico').length
+            };
+            
+            if (charts.ritardi) {
+                charts.ritardi.data.datasets[0].data = Object.values(statiRitardi);
+                charts.ritardi.update();
+            }
+        }
+
+        function inizializzaGrafici() {
+            // Chart 1: Tipologie Treni
+            const ctx1 = document.getElementById('chart-tipologie-treni');
+            if (ctx1) {
+                charts.tipologieTreni = new Chart(ctx1.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Frecciarossa', 'Frecciaargento', 'Intercity', 'Regionale', 'Italo', 'Altri'],
+                        datasets: [{
+                            data: [0, 0, 0, 0, 0, 0],
+                            backgroundColor: [
+                                '#E30613', '#0066CC', '#003366', 
+                                '#28a745', '#ffc107', '#6c757d'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' }
+                        }
+                    }
+                });
+            }
+            
+            // Chart 2: Turni per Impianto
+            const ctx2 = document.getElementById('chart-turni-impianto');
+            if (ctx2) {
+                charts.turniImpianto = new Chart(ctx2.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Turni per Impianto',
+                            data: [],
+                            backgroundColor: '#0066CC',
+                            borderColor: '#003366',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+            
+            // Inizializza altri grafici...
+        }
+
+        // ==================== FUNZIONI GESTIONE TURNI (CRUD) ====================
+        function aggiungiTurnoManuale() {
+            changeSection('nuovo-turno');
+        }
+
+        function modificaTurno(turnoId) {
+            const turno = DATI_SISTEMA.turni.find(t => t.id === turnoId);
+            if (!turno) return;
+            
+            document.getElementById('modal-titolo').innerHTML = '<i class="fas fa-edit"></i> Modifica Turno';
+            document.getElementById('modal-corpo').innerHTML = `
+                <div class="edit-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Impianto</label>
+                            <select id="edit-impianto">
+                                ${DATI_SISTEMA.impianti.map(imp => 
+                                    `<option value="${imp.nome}" ${imp.nome === turno.impianto ? 'selected' : ''}>${imp.nome}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Codice Turno</label>
+                            <input type="text" id="edit-codice" value="${turno.codice}">
+                        </div>
+                        <div class="form-group">
+                            <label>Ora Inizio</label>
+                            <input type="time" id="edit-inizio" value="${turno.inizio}">
+                        </div>
+                        <div class="form-group">
+                            <label>Ora Fine</label>
+                            <input type="time" id="edit-fine" value="${turno.fine}">
+                        </div>
+                        <div class="form-group">
+                            <label>Treni (separati da virgola)</label>
+                            <input type="text" id="edit-treni" value="${turno.treni.join(', ')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Km</label>
+                            <input type="number" id="edit-km" value="${turno.km}">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo Turno</label>
+                            <select id="edit-tipo">
+                                <option value="Diurno" ${turno.tipo === 'Diurno' ? 'selected' : ''}>Diurno</option>
+                                <option value="Notturno" ${turno.tipo === 'Notturno' ? 'selected' : ''}>Notturno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Note</label>
+                            <textarea id="edit-note" rows="3">${turno.note || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Equipaggio</label>
+                            <input type="text" id="edit-equipaggio" value="${turno.equipaggio || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Materiale Rotabile</label>
+                            <input type="text" id="edit-materiale" value="${turno.materiale || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Ritardo (minuti)</label>
+                            <input type="number" id="edit-ritardo" value="${turno.ritardo || 0}" min="0" max="240">
+                        </div>
+                        <div class="form-group">
+                            <label>Stato</label>
+                            <select id="edit-stato">
+                                <option value="normale" ${turno.stato === 'normale' ? 'selected' : ''}>Normale</option>
+                                <option value="ritardo" ${turno.stato === 'ritardo' ? 'selected' : ''}>In Ritardo</option>
+                                <option value="critico" ${turno.stato === 'critico' ? 'selected' : ''}>Critico</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-success" onclick="salvaModificheTurno(${turnoId})">
+                            <i class="fas fa-save"></i> Salva Modifiche
+                        </button>
+                        <button class="btn btn-outline" onclick="chiudiModal()">
+                            <i class="fas fa-times"></i> Annulla
+                        </button>
+                        <button class="btn btn-danger" onclick="confermaEliminaTurno(${turnoId})">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-generico').style.display = 'flex';
+        }
+
+        function salvaModificheTurno(turnoId) {
+            const turno = DATI_SISTEMA.turni.find(t => t.id === turnoId);
+            if (!turno) return;
+            
+            turno.impianto = document.getElementById('edit-impianto').value;
+            turno.codice = document.getElementById('edit-codice').value;
+            turno.inizio = document.getElementById('edit-inizio').value;
+            turno.fine = document.getElementById('edit-fine').value;
+            turno.treni = document.getElementById('edit-treni').value.split(',').map(t => t.trim()).filter(t => t);
+            turno.km = parseInt(document.getElementById('edit-km').value) || 0;
+            turno.tipo = document.getElementById('edit-tipo').value;
+            turno.note = document.getElementById('edit-note').value;
+            turno.equipaggio = document.getElementById('edit-equipaggio').value;
+            turno.materiale = document.getElementById('edit-materiale').value;
+            turno.ritardo = parseInt(document.getElementById('edit-ritardo').value) || 0;
+            turno.stato = document.getElementById('edit-stato').value;
+            turno.dataModifica = luxon.DateTime.now().toISO();
+            
+            // Ricalcola sovrapposizioni
+            calcolaSovrapposizioni();
+            
+            // Aggiorna interfaccia
+            aggiornaTabellaTurni();
+            aggiornaDashboard();
+            
+            chiudiModal();
+            mostraNotifica('Turno aggiornato con successo', 'success');
+        }
+
+        function eliminaTurno(turnoId) {
+            if (confirm('Sei sicuro di voler eliminare questo turno?')) {
+                DATI_SISTEMA.turni = DATI_SISTEMA.turni.filter(t => t.id !== turnoId);
+                aggiornaTabellaTurni();
+                aggiornaDashboard();
+                mostraNotifica('Turno eliminato', 'success');
+            }
+        }
+
+        // ==================== FUNZIONI SOVRAPPOSIZIONI ====================
+        function calcolaSovrapposizioni(silent = false) {
+            if (!silent) mostraCaricamento('Calcolo sovrapposizioni...');
+            
+            setTimeout(() => {
+                const risultati = [];
+                
+                // Converte tutti i turni in formato comparabile
+                const turniConMinuti = DATI_SISTEMA.turni.map(turno => ({
+                    ...turno,
+                    inizioMin: parseOra(turno.inizio),
+                    fineMin: parseOra(turno.fine),
+                    impiantoObj: DATI_SISTEMA.impianti.find(i => i.nome === turno.impianto)
+                }));
+                
+                // Trova sovrapposizioni
+                for (let i = 0; i < turniConMinuti.length; i++) {
+                    for (let j = i + 1; j < turniConMinuti.length; j++) {
+                        const t1 = turniConMinuti[i];
+                        const t2 = turniConMinuti[j];
+                        
+                        // Skip se stesso impianto (a meno che non sia critico)
+                        if (t1.impianto === t2.impianto && t1.impiantoObj.priorita !== 'alta') continue;
+                        
+                        // Controlla sovrapposizione
+                        if (t1.inizioMin < t2.fineMin && t2.inizioMin < t1.fineMin) {
+                            const inizioSov = Math.max(t1.inizioMin, t2.inizioMin);
+                            const fineSov = Math.min(t1.fineMin, t2.fineMin);
+                            const durataSov = fineSov - inizioSov;
+                            
+                            if (durataSov > 15) { // Minimo 15 minuti
+                                // Calcola distanza
+                                const distanza = calcolaDistanza(
+                                    t1.impiantoObj.coordinate,
+                                    t2.impiantoObj.coordinate
+                                );
+                                
+                                const compatibile = distanza < DATI_SISTEMA.configurazione.sogliaOttimizzazione;
+                                const critico = durataSov > 60 && !compatibile;
+                                
+                                risultati.push({
+                                    id: risultati.length + 1,
+                                    impianto1: t1.impianto,
+                                    turno1: t1.codice,
+                                    impianto2: t2.impianto,
+                                    turno2: t2.codice,
+                                    inizioSov: minutiAOrario(inizioSov),
+                                    fineSov: minutiAOrario(fineSov),
+                                    durataSov: durataSov,
+                                    durataSovFormattata: `${Math.floor(durataSov / 60)}h ${durataSov % 60}m`,
+                                    distanza: Math.round(distanza),
+                                    distanzaFormattata: `${Math.round(distanza)} km`,
+                                    compatibile: compatibile,
+                                    critico: critico,
+                                    azioniConsigliate: generaSuggerimentiSovrapposizione(distanza, durataSov, t1, t2)
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                DATI_SISTEMA.sovrapposizioni = risultati.sort((a, b) => b.durataSov - a.durataSov);
+                
+                if (!silent) {
+                    nascondiCaricamento();
+                    mostraNotifica(`Trovate ${risultati.length} sovrapposizioni`, 'info');
+                    caricaSovrapposizioni();
+                    aggiornaDashboard();
+                }
+            }, 500);
+        }
+
+        function calcolaDistanza(coord1, coord2) {
+            // Formula di Haversine
+            const R = 6371; // Raggio Terra in km
+            const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
+            const dLon = (coord2.lon - coord1.lon) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function minutiAOrario(minuti) {
+            const ore = Math.floor(minuti / 60);
+            const mins = minuti % 60;
+            return `${ore.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+
+        // ==================== FUNZIONI GANTT ====================
+        function aggiornaGantt() {
+            mostraCaricamento('Generazione diagramma Gantt...');
+            
+            setTimeout(() => {
+                const container = document.getElementById('gantt-container');
+                const impiantiSelezionati = Array.from(
+                    document.getElementById('gantt-impianti').selectedOptions
+                ).map(o => o.value);
+                
+                const fascia = document.getElementById('gantt-fascia').value;
+                const mostra = document.getElementById('gantt-mostra').value;
+                const scala = parseInt(document.getElementById('gantt-scala').value);
+                const gruppi = document.getElementById('gantt-gruppi').value;
+                
+                // Filtra turni
+                let turniDaMostrare = DATI_SISTEMA.turni;
+                
+                if (impiantiSelezionati.length > 0) {
+                    turniDaMostrare = turniDaMostrare.filter(t => impiantiSelezionati.includes(t.impianto));
+                }
+                
+                if (mostra === 'diurni') {
+                    turniDaMostrare = turniDaMostrare.filter(t => t.tipo === 'Diurno');
+                } else if (mostra === 'notturni') {
+                    turniDaMostrare = turniDaMostrare.filter(t => t.tipo === 'Notturno');
+                } else if (mostra === 'ritardi') {
+                    turniDaMostrare = turniDaMostrare.filter(t => t.ritardo > 0);
+                } else if (mostra === 'critici') {
+                    turniDaMostrare = turniDaMostrare.filter(t => t.stato === 'critico');
+                }
+                
+                // Calcola timeline
+                const inizioGiornata = 4 * 60; // 4:00
+                const fineGiornata = 28 * 60; // 4:00 del giorno dopo
+                const durataGiornata = fineGiornata - inizioGiornata;
+                const larghezzaTotale = durataGiornata * scala / 60;
+                
+                // Aggiorna timeline
+                aggiornaTimelineGantt(inizioGiornata, fineGiornata, scala);
+                
+                // Raggruppa turni
+                const turniPerGruppo = {};
+                if (gruppi === 'impianto') {
+                    DATI_SISTEMA.impianti.forEach(imp => {
+                        turniPerGruppo[imp.nome] = turniDaMostrare.filter(t => t.impianto === imp.nome);
+                    });
+                } else if (gruppi === 'tipo') {
+                    turniPerGruppo['Diurno'] = turniDaMostrare.filter(t => t.tipo === 'Diurno');
+                    turniPerGruppo['Notturno'] = turniDaMostrare.filter(t => t.tipo === 'Notturno');
+                } else {
+                    turniPerGruppo['Normale'] = turniDaMostrare.filter(t => t.stato === 'normale');
+                    turniPerGruppo['Ritardo'] = turniDaMostrare.filter(t => t.ritardo > 0 && t.stato !== 'critico');
+                    turniPerGruppo['Critico'] = turniDaMostrare.filter(t => t.stato === 'critico');
+                }
+                
+                // Genera HTML Gantt
+                let html = '';
+                Object.entries(turniPerGruppo).forEach(([gruppo, turni]) => {
+                    if (turni.length === 0) return;
+                    
+                    html += `<div class="gantt-row">
+                        <div class="gantt-label">${gruppo}</div>
+                        <div class="gantt-bar-container" style="min-width: ${larghezzaTotale}px;">`;
+                    
+                    turni.forEach(turno => {
+                        const inizioMin = parseOra(turno.inizio);
+                        const fineMin = parseOra(turno.fine);
+                        
+                        // Normalizza rispetto all'inizio della giornata
+                        const inizioNormalizzato = Math.max(inizioMin, inizioGiornata);
+                        const fineNormalizzato = Math.min(fineMin, fineGiornata);
+                        const durataNormalizzata = fineNormalizzato - inizioNormalizzato;
+                        
+                        if (durataNormalizzata > 0) {
+                            const left = ((inizioNormalizzato - inizioGiornata) * scala / 60);
+                            const width = (durataNormalizzata * scala / 60);
+                            
+                            // Determina colore
+                            let colore = '#0066CC'; // Blu diurno
+                            if (turno.tipo === 'Notturno') colore = '#003366'; // Blu notte
+                            if (turno.ritardo > 0) colore = turno.ritardo > 30 ? '#E30613' : '#ffc107'; // Rosso ritardo critico, giallo ritardo lieve
+                            if (turno.stato === 'critico') colore = '#dc3545'; // Rosso critico
+                            
+                            html += `
+                                <div class="gantt-bar draggable" 
+                                     style="left: ${left}px; width: ${Math.max(width, 30)}px; background: ${colore};"
+                                     data-turno-id="${turno.id}"
+                                     draggable="true"
+                                     ondragstart="iniziaTrascinamentoGantt(event)"
+                                     ondblclick="modificaTurno(${turno.id})"
+                                     title="${turno.codice}: ${turno.inizio}-${turno.fine}
+${turno.treni.join(', ')}
+${turno.ritardo > 0 ? `Ritardo: ${turno.ritardo} min` : ''}">
+                                    <div style="padding: 0 5px; overflow: hidden; text-overflow: ellipsis;">
+                                        ${turno.codice}${turno.ritardo > 0 ? ` (+${turno.ritardo})` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    html += `</div></div>`;
+                });
+                
+                container.innerHTML = html;
+                
+                // Aggiorna legenda
+                aggiornaLegendaGantt();
+                
+                nascondiCaricamento();
+            }, 300);
+        }
+
+        function aggiornaTimelineGantt(inizioMin, fineMin, scala) {
+            const timeline = document.getElementById('gantt-timeline');
+            const durata = fineMin - inizioMin;
+            const larghezza = durata * scala / 60;
+            
+            let html = '';
+            for (let ora = Math.floor(inizioMin / 60); ora <= Math.floor(fineMin / 60); ora++) {
+                const oraNormalizzata = ora % 24;
+                const posizione = ((ora * 60 - inizioMin) * scala / 60);
+                
+                html += `
+                    <div class="gantt-hour" style="left: ${posizione}px;">
+                        ${oraNormalizzata.toString().padStart(2, '0')}:00
+                    </div>
+                `;
+            }
+            
+            timeline.innerHTML = html;
+            timeline.style.width = `${larghezza}px`;
+        }
+
+        // ==================== FUNZIONI ESPORTAZIONE ====================
+        function esportaExcelCompleto() {
+            mostraCaricamento('Generazione file Excel...');
+            
+            setTimeout(() => {
+                const wb = XLSX.utils.book_new();
+                
+                // Foglio 1: Turni
+                const turniData = DATI_SISTEMA.turni.map(t => ({
+                    'ID': t.id,
+                    'Impianto': t.impianto,
+                    'Codice Turno': t.codice,
+                    'Inizio': t.inizio,
+                    'Fine': t.fine,
+                    'Durata': calcolaDurata(parseOra(t.inizio), parseOra(t.fine)),
+                    'Treni': t.treni.join(', '),
+                    'Km': t.km,
+                    'Tipo': t.tipo,
+                    'Ritardo (min)': t.ritardo,
+                    'Stato': t.stato,
+                    'Equipaggio': t.equipaggio,
+                    'Materiale': t.materiale,
+                    'Note': t.note,
+                    'Data Creazione': t.dataCreazione,
+                    'Ultima Modifica': t.dataModifica
+                }));
+                
+                const ws1 = XLSX.utils.json_to_sheet(turniData);
+                XLSX.utils.book_append_sheet(wb, ws1, 'Turni');
+                
+                // Foglio 2: Sovrapposizioni
+                if (DATI_SISTEMA.sovrapposizioni.length > 0) {
+                    const sovrapposizioniData = DATI_SISTEMA.sovrapposizioni.map(s => ({
+                        'Impianto 1': s.impianto1,
+                        'Turno 1': s.turno1,
+                        'Impianto 2': s.impianto2,
+                        'Turno 2': s.turno2,
+                        'Sovrapposizione': `${s.inizioSov}-${s.fineSov}`,
+                        'Durata (min)': s.durataSov,
+                        'Distanza (km)': s.distanza,
+                        'Compatibile': s.compatibile ? 'Sì' : 'No',
+                        'Critico': s.critico ? 'Sì' : 'No',
+                        'Azioni Consigliate': s.azioniConsigliate
+                    }));
+                    
+                    const ws2 = XLSX.utils.json_to_sheet(sovrapposizioniData);
+                    XLSX.utils.book_append_sheet(wb, ws2, 'Sovrapposizioni');
+                }
+                
+                // Foglio 3: Impianti
+                const impiantiData = DATI_SISTEMA.impianti.map(i => ({
+                    'Nome': i.nome,
+                    'Regione': i.regione,
+                    'Latitudine': i.coordinate.lat,
+                    'Longitudine': i.coordinate.lon,
+                    'Stato': i.stato,
+                    'Capacità': i.capacita,
+                    'Priorità': i.priorita,
+                    'Note': i.note
+                }));
+                
+                const ws3 = XLSX.utils.json_to_sheet(impiantiData);
+                XLSX.utils.book_append_sheet(wb, ws3, 'Impianti');
+                
+                // Foglio 4: Statistiche
+                const stats = calcolaStatistiche();
+                const statisticheData = [{
+                    'Totale Turni': DATI_SISTEMA.turni.length,
+                    'Totale Impianti': DATI_SISTEMA.impianti.length,
+                    'Treni Gestiti': stats.treniTotali,
+                    'Km Totali': stats.kmTotali,
+                    'Turni Notturni': stats.turniNotturni,
+                    'Ritardi Attivi': stats.ritardiAttivi,
+                    'Turni Critici': stats.turniCritici,
+                    'Sovrapposizioni': DATI_SISTEMA.sovrapposizioni.length,
+                    'Sovrapposizioni Ottimizzabili': stats.sovrapposizioniOttimizzabili,
+                    'Data Esportazione': new Date().toLocaleString('it-IT')
+                }];
+                
+                const ws4 = XLSX.utils.json_to_sheet(statisticheData);
+                XLSX.utils.book_append_sheet(wb, ws4, 'Statistiche');
+                
+                // Genera nome file
+                const dataOra = luxon.DateTime.now().toFormat('yyyy-MM-dd_HH-mm');
+                const nomeFile = `Trenitalia_Turni_${dataOra}.xlsx`;
+                
+                // Salva file
+                XLSX.writeFile(wb, nomeFile);
+                
+                // Aggiungi a cronologia
+                aggiungiCronologiaEsportazione('Excel Completo', nomeFile, 'Excel');
+                
+                nascondiCaricamento();
+                mostraNotifica(`File ${nomeFile} generato con successo`, 'success');
+            }, 1000);
+        }
+
+        // ==================== FUNZIONI UTILITY ====================
+        function mostraNotifica(messaggio, tipo = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo}`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'danger' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                <div>${messaggio}</div>
+                <button class="btn btn-sm" onclick="this.parentElement.remove()" style="margin-left: auto;">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            document.getElementById('alert-container').appendChild(alertDiv);
+            
+            // Auto-rimuovi dopo 5 secondi
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        function mostraCaricamento(messaggio = 'Caricamento...') {
+            let overlay = document.getElementById('loading-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'loading-overlay';
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.7);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                    color: white;
+                    font-size: 18px;
+                `;
+                document.body.appendChild(overlay);
+            }
+            
+            overlay.innerHTML = `
+                <div style="text-align: center;">
+                    <div class="spinner"></div>
+                    <p>${messaggio}</p>
+                </div>
+            `;
+            
+            overlay.style.display = 'flex';
+        }
+
+        function nascondiCaricamento() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+
+        function chiudiModal() {
+            document.getElementById('modal-generico').style.display = 'none';
+        }
+
+        function salvaDati() {
+            try {
+                const datiDaSalvare = {
+                    impianti: DATI_SISTEMA.impianti,
+                    turni: DATI_SISTEMA.turni,
+                    configurazione: DATI_SISTEMA.configurazione,
+                    utente: DATI_SISTEMA.utente,
+                    dataSalvataggio: new Date().toISOString()
+                };
+                
+                localStorage.setItem('trenitalia_turni_data', JSON.stringify(datiDaSalvare));
+                console.log('💾 Dati salvati localmente');
+                
+                // Mostra notifica solo se non in autosalvataggio
+                if (!DATI_SISTEMA.configurazione.salvataggioAuto) {
+                    mostraNotifica('Dati salvati con successo', 'success');
+                }
+            } catch (error) {
+                console.error('Errore nel salvataggio:', error);
+                mostraNotifica('Errore nel salvataggio dei dati', 'danger');
+            }
+        }
+
+        function caricaDatiSalvati() {
+            try {
+                const datiSalvati = localStorage.getItem('trenitalia_turni_data');
+                if (datiSalvati) {
+                    const parsed = JSON.parse(datiSalvati);
+                    
+                    if (parsed.impianti) DATI_SISTEMA.impianti = parsed.impianti;
+                    if (parsed.turni) DATI_SISTEMA.turni = parsed.turni;
+                    if (parsed.configurazione) DATI_SISTEMA.configurazione = parsed.configurazione;
+                    if (parsed.utente) DATI_SISTEMA.utente = parsed.utente;
+                    
+                    console.log('📂 Dati caricati dal salvataggio locale');
+                    mostraNotifica(`Dati caricati (salvati il ${new Date(parsed.dataSalvataggio).toLocaleString('it-IT')})`, 'info');
+                    
+                    // Aggiorna interfaccia
+                    popolaSelectImpianti();
+                    aggiornaTabellaTurni();
+                    calcolaSovrapposizioni(true);
+                    aggiornaDashboard();
+                }
+            } catch (error) {
+                console.error('Errore nel caricamento:', error);
+                mostraNotifica('Errore nel caricamento dei dati salvati', 'danger');
+            }
+        }
+
+        // ==================== FUNZIONI PRINCIPALI DA ESPORARE ====================
+        // Queste funzioni sono accessibili dall'HTML
+        window.eseguiAnalisiCompleta = function() {
+            mostraCaricamento('Analisi completa in corso...');
+            
+            setTimeout(() => {
+                // 1. Calcola sovrapposizioni
+                calcolaSovrapposizioni(true);
+                
+                // 2. Calcola ottimizzazione
+                calcolaOttimizzazione(true);
+                
+                // 3. Verifica consistenza
+                verificaConsistenza(true);
+                
+                // 4. Aggiorna dashboard
+                aggiornaDashboard();
+                
+                // 5. Controlla notifiche
+                controllaNotifiche();
+                
+                nascondiCaricamento();
+                
+                const stats = calcolaStatistiche();
+                const messaggio = `
+                    Analisi completata!
+                    
+                    Statistiche:
+                    • ${DATI_SISTEMA.turni.length} turni analizzati
+                    • ${DATI_SISTEMA.sovrapposizioni.length} sovrapposizioni trovate
+                    • ${stats.sovrapposizioniOttimizzabili} ottimizzabili
+                    • ${stats.ritardiAttivi} ritardi attivi
+                    
+                    ${stats.ritardiAttivi > 0 ? '⚠️ Attenzione: ritardi attivi rilevati!' : '✅ Sistema in condizioni ottimali'}
+                `;
+                
+                document.getElementById('modal-titolo').innerHTML = '<i class="fas fa-check-circle"></i> Analisi Completata';
+                document.getElementById('modal-corpo').innerHTML = `
+                    <div style="padding: 20px;">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <div><strong>Analisi del sistema completata con successo</strong></div>
+                        </div>
+                        
+                        <div class="charts-grid" style="margin: 20px 0;">
+                            <div style="background: var(--trenitalia-light); padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 12px; color: #666;">TURNI ANALIZZATI</div>
+                                <div style="font-size: 24px; font-weight: 700; color: var(--trenitalia-blue);">${DATI_SISTEMA.turni.length}</div>
+                            </div>
+                            <div style="background: var(--trenitalia-light); padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 12px; color: #666;">SOVRAPPOSIZIONI</div>
+                                <div style="font-size: 24px; font-weight: 700; color: var(--trenitalia-blue);">${DATI_SISTEMA.sovrapposizioni.length}</div>
+                            </div>
+                            <div style="background: var(--trenitalia-light); padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 12px; color: #666;">OTTIMIZZABILI</div>
+                                <div style="font-size: 24px; font-weight: 700; color: var(--success);">${stats.sovrapposizioniOttimizzabili}</div>
+                            </div>
+                        </div>
+                        
+                        ${stats.ritardiAttivi > 0 ? `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <div>
+                                    <strong>ATTENZIONE: ${stats.ritardiAttivi} ritardi attivi</strong>
+                                    <p>Si consiglia di intervenire immediatamente sui turni in ritardo.</p>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Sistema in condizioni ottimali</strong>
+                                    <p>Tutti i turni sono in orario e non ci sono criticità.</p>
+                                </div>
+                            </div>
+                        `}
+                        
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button class="btn btn-success" onclick="applicaOttimizzazioniSuggerite()">
+                                <i class="fas fa-check"></i> Applica Ottimizzazioni
+                            </button>
+                            <button class="btn" onclick="generaReportAnalisi()">
+                                <i class="fas fa-file-alt"></i> Genera Report
+                            </button>
+                            <button class="btn btn-outline" onclick="chiudiModal()">
+                                <i class="fas fa-times"></i> Chiudi
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('modal-generico').style.display = 'flex';
+            }, 1500);
+        };
+
+        window.simulaRitardoModal = function() {
+            document.getElementById('modal-titolo').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Simula Ritardo';
+            document.getElementById('modal-corpo').innerHTML = `
+                <div style="padding: 20px;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Seleziona Turno</label>
+                            <select id="simula-turno">
+                                <option value="">Scegli un turno...</option>
+                                ${DATI_SISTEMA.turni.map(t => 
+                                    `<option value="${t.id}">${t.codice} - ${t.impianto} (${t.inizio}-${t.fine})</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Minuti di Ritardo</label>
+                            <input type="range" id="simula-minuti" min="5" max="120" value="30" 
+                                   oninput="document.getElementById('simula-minuti-valore').textContent = this.value + ' min'">
+                            <div style="text-align: center; margin-top: 5px;">
+                                <span id="simula-minuti-valore" style="font-weight: 600;">30 min</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Causa Ritardo</label>
+                            <select id="simula-causa">
+                                <option value="tecnica">Problema Tecnico</option>
+                                <option value="personale">Problema Personale</option>
+                                <option value="meteo">Condizioni Meteo</option>
+                                <option value="traffico">Alto Traffico</option>
+                                <option value="altro">Altro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Propaga ad altri turni?</label>
+                            <select id="simula-propaga">
+                                <option value="si">Sì, simula impatto a cascata</option>
+                                <option value="no">No, solo questo turno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Livello Criticità</label>
+                            <select id="simula-criticita">
+                                <option value="leggero">Leggero (< 30 min)</option>
+                                <option value="medio" selected>Medio (30-60 min)</option>
+                                <option value="critico">Critico (> 60 min)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Note Aggiuntive</label>
+                            <textarea id="simula-note" rows="3" placeholder="Descrizione dettagliata del ritardo..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info" style="margin: 20px 0;">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Impatto stimato della simulazione:</strong>
+                            <div id="impatto-simulazione" style="margin-top: 10px;">
+                                • Turno principale: +30 min<br>
+                                • 2-3 turni affetti<br>
+                                • Impatto totale: ~45-60 min<br>
+                                • Allerta di livello: Medio
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn btn-danger" onclick="eseguiSimulazioneRitardo()">
+                            <i class="fas fa-play-circle"></i> Esegui Simulazione
+                        </button>
+                        <button class="btn" onclick="testImpattoCascata()">
+                            <i class="fas fa-project-diagram"></i> Test Impatto
+                        </button>
+                        <button class="btn btn-outline" onclick="chiudiModal()">
+                            <i class="fas fa-times"></i> Annulla
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-generico').style.display = 'flex';
+        };
+
+        window.esportaExcel = esportaExcelCompleto;
+
+        // ==================== SETUP FINALE ====================
+        // Aggiungi stili di stampa
+        const style = document.createElement('style');
+        style.textContent = `
+            @media print {
+                .sidebar, .controls, .btn, .action-buttons, .internal-tabs, .filters {
+                    display: none !important;
+                }
+                .container {
+                    grid-template-columns: 1fr;
+                }
+                .main-content {
+                    width: 100%;
+                }
+                .content-area {
+                    box-shadow: none;
+                    border: 1px solid #ddd;
+                }
+                .table-container {
+                    overflow: visible;
+                }
+                table {
+                    min-width: auto;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Mostra messaggio di benvenuto
+        setTimeout(() => {
+            mostraNotifica('Sistema Trenitalia AV pronto. Tutti i dati sono modificabili.', 'info');
+        }, 1000);
+
+        // Log inizializzazione completata
+        console.log("✅ Sistema Trenitalia AV pronto all'uso");
+        console.log("📊 Dati caricati:");
+        console.log(`   • ${DATI_SISTEMA.impianti.length} impianti`);
+        console.log(`   • ${DATI_SISTEMA.turni.length} turni`);
+        console.log(`   • ${DATI_SISTEMA.sovrapposizioni.length} sovrapposizioni`);
+        console.log("🎯 Funzionalità attive:");
+        console.log("   • Modifica diretta di tutti i dati");
+        console.log("   • Salvataggio automatico ogni 30 secondi");
+        console.log("   • Calcolo automatico sovrapposizioni");
+        console.log("   • Ottimizzazione intelligente");
+        console.log("   • Simulazione ritardi in tempo reale");
+        console.log("   • Esportazione Excel/JSON/PDF");
+    </script>
+</body>
+</html>
